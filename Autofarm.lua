@@ -86,6 +86,13 @@ Beam.FaceCamera = true
 local BeamRoot = Instance.new("Part", workspace)
 BeamRoot.Anchored = true
 local BeamTarget = Instance.new("Attachment", BeamRoot)
+Beam.Attachment1 = BeamTarget
+
+task.spawn(function()
+    while wait() do
+        Beam.Color = ColorSequence.new(Color3.fromHSV(tick() % 5 / 5, 1, 1))
+    end
+end)
 
 local function PreformDelivery()
     local DeliveryJob : BasePart = FindDeliveryJob()
