@@ -102,7 +102,7 @@ local function PreformDelivery()
         )
     end)
 
-    MoveCharacterToPoint(DeliveryJob.Position - Vector3.new(0,GROUND_INTO,0), TELEPORT_SPEED)
+    MoveCharacterToPoint(DeliveryJob.Position - Vector3.new(0,GROUND_INTO,0), TELEPORT_SPEED, 5)
     TP(DeliveryJob.Position)
 
     HeartbeatConnection:Disconnect()
@@ -183,6 +183,15 @@ local function PreformDelivery()
 end
 
 print("Autofarm started in "..(tick() - StartTime).." seconds.")
+
+task.spawn(function()
+    while wait() do
+        if LocalPlayer.Character.Humanoid.Sit then
+            LocalPlayer.Character.Humanoid.Sit = false
+            LocalPlayer.Character.Humanoid.Jump = true
+        end
+    end
+end)
 
 while wait() do
 
