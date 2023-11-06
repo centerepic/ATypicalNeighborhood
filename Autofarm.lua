@@ -102,7 +102,7 @@ local function PreformDelivery()
         )
     end)
 
-    MoveCharacterToPoint(DeliveryJob.Position - Vector3.new(0,GROUND_INTO,0), TELEPORT_SPEED, 5)
+    MoveCharacterToPoint(DeliveryJob.Position - Vector3.new(0,GROUND_INTO,0), TELEPORT_SPEED)
     TP(DeliveryJob.Position)
 
     HeartbeatConnection:Disconnect()
@@ -184,7 +184,7 @@ local function PreformDelivery()
 
     if (tick() - DeliverAttemptStart) > 10 then
         SetHint("Delivery failed. Resetting character.")
-        TP(Character:GetPivot() - Vector3.new(0, 400, 0))
+        TP(Character:GetPivot() - Vector3.new(0, 800, 0))
         LocalPlayer.Character.Humanoid.Health = 0
         LocalPlayer.Character:BreakJoints()
         LocalPlayer.CharacterAdded:Wait()
