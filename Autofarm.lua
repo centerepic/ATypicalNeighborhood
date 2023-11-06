@@ -184,6 +184,7 @@ local function PreformDelivery()
 
     if (tick() - DeliverAttemptStart) > 10 then
         SetHint("Delivery failed. Resetting character.")
+        TP(Character:GetPivot() - Vector3.new(0, 400, 0))
         LocalPlayer.Character.Humanoid.Health = 0
         LocalPlayer.Character:BreakJoints()
         LocalPlayer.CharacterAdded:Wait()
