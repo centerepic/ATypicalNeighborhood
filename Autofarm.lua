@@ -179,7 +179,15 @@ local function PreformDelivery()
         RunService.Heartbeat:Wait()
         TP(DeliveryTarget.Position - (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 1.5) + Vector3.new(x,y,z))
     until
-        not (LocalPlayer.Character:FindFirstChild("Delivery Box") or LocalPlayer.Backpack:FindFirstChild("Delivery Box"))
+        (not (LocalPlayer.Character:FindFirstChild("Delivery Box") or LocalPlayer.Backpack:FindFirstChild("Delivery Box")))
+        or (tick() - DeliverAttemptStart) > 10
+
+    if (tick() - DeliverAttemptStart) > 10 then
+        SetHint("Delivery failed. Resetting character.")
+        LocalPlayer.Character.Humanoid.Health = 0
+        LocalPlayer.Character:BreakJoints()
+        LocalPlayer.CharacterAdded:Wait()
+    end
 end
 
 print("Autofarm started in "..(tick() - StartTime).." seconds.")
