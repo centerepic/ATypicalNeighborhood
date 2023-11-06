@@ -183,11 +183,9 @@ local function PreformDelivery()
         or (tick() - DeliverAttemptStart) > 10
 
     if (tick() - DeliverAttemptStart) > 10 then
-        SetHint("Delivery failed. Resetting character.")
-        TP(Character:GetPivot() - Vector3.new(0, 800, 0))
-        LocalPlayer.Character.Humanoid.Health = 0
-        LocalPlayer.Character:BreakJoints()
-        LocalPlayer.CharacterAdded:Wait()
+        SetHint("Delivery failed. Resetting.")
+        DeliveryBox.Parent = workspace
+        DeliveryBox:Destroy()
     end
 end
 
@@ -213,10 +211,12 @@ while wait() do
     SetHint("Waiting for delivery cooldown...")
     local WaitStart = tick()
     local OPos = LocalPlayer.Character.HumanoidRootPart.Position
+
     local HeartbeatConnection = RunService.Heartbeat:Connect(function()
         SetHint("Waiting for delivery cooldown... ("..math.floor(10 - (tick() - WaitStart)).." seconds left)")
         TP(OPos - Vector3.new(0, GROUND_INTO, 0))
     end)
+
     task.wait(10)
     HeartbeatConnection:Disconnect()
 end
