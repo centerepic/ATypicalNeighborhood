@@ -6,8 +6,8 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 
-local TELEPORT_SPEED = 120
-local GROUND_INTO = 12
+local TELEPORT_SPEED = 75
+local GROUND_INTO = 16
 
 local function TP(Position)
     if typeof(Position) == "Instance" then
