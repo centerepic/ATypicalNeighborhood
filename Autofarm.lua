@@ -39,6 +39,11 @@ local function Click(Part : BasePart)
     end
 end
 
+local function SineWave(time, maxAmplitude, frequency)
+    local sineValue = maxAmplitude * math.sin(2 * math.pi * frequency * time)
+    return sineValue
+end
+
 local function MoveCharacterToPoint(TargetPoint : Vector3, Speed : number, MaxRadius : number)
     local Character = LocalPlayer.Character
     local CurrentPosition = Character.HumanoidRootPart.Position
@@ -72,11 +77,22 @@ local function SetHint(Text : string)
     Hint.Text = Text
 end
 
+local Beam = Instance.new("Beam", LocalPlayer.Character.HumanoidRootPart)
+Beam.Attachment0 = Instance.new("Attachment", LocalPlayer.Character.HumanoidRootPart)
+Beam.Transparency = NumberSequence.new(0)
+Beam.LightInfluence = 0
+Beam.FaceCamera = true
+
+local BeamRoot = Instance.new("Part", workspace)
+BeamRoot.Anchored = true
+local BeamTarget = Instance.new("Attachment", BeamRoot)
+
 local function PreformDelivery()
     local DeliveryJob : BasePart = FindDeliveryJob()
 
     TP(Character.HumanoidRootPart.CFrame - Vector3.new(0, GROUND_INTO, 0))
     SetHint("Traveling to delivery job...")
+    BeamTarget.WorldCFrame = DeliveryJob.CFrame
 
     local HeartbeatConnection = RunService.Heartbeat:Connect(function()
         SetHint(
@@ -122,6 +138,8 @@ local function PreformDelivery()
     local TargetCFrame = DeliveryTarget - (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 1.5)
     local OCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame - Vector3.new(0, GROUND_INTO, 0)
 
+    BeamTarget.WorldCFrame = DeliveryTarget
+
     local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
 
         TP(OCFrame:Lerp(
@@ -148,9 +166,11 @@ local function PreformDelivery()
 
     LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
 
+    local DeliverAttemptStart = tick()
+
     repeat
 
-        local x,y,z = math.random(-10, 10) / 10, math.random(-10, 10) / 10, math.random(-10, 10) / 10
+        local x,y,z = SineWave(tick() - DeliverAttemptStart, 1.2, 1), SineWave(tick() - DeliverAttemptStart, 1.2, 0.5), SineWave(tick() - DeliverAttemptStart, 1.2, 0.25)
 
         if not LocalPlayer.Character:FindFirstChild("Delivery Box") then
             LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
