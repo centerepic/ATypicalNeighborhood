@@ -11,6 +11,8 @@ if workspace:FindFirstChildOfClass("Hint") then
     workspace:FindFirstChildOfClass("Hint"):Destroy()
 end
 
+Instance.new("PointLight", game.Players.LocalPlayer.Character.HumanoidRootPart).Range = 30
+
 local TELEPORT_SPEED = 52
 local GROUND_INTO = 16
 local DEPOSIT_THRESHOLD = 1000
@@ -24,6 +26,13 @@ local Util = {
 }
 
 function Util:TP(Position)
+
+    for _, BasePart in next, LocalPlayer.Character:GetDescendants() do
+        if BasePart:IsA("BasePart") then
+            BasePart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        end
+    end
+
     if typeof(Position) == "Instance" then
         Position = Position.CFrame
     end
@@ -79,6 +88,13 @@ function Util:MoveCharacterToPoint(TargetPoint : Vector3, Speed : number, MaxRad
 
     if MaxRadius then
         while tick() < EndTime and (Character.HumanoidRootPart.Position - TargetPoint).Magnitude < MaxRadius do
+
+            for _, BasePart in next, LocalPlayer.Character:GetDescendants() do
+                if BasePart:IsA("BasePart") then
+                    BasePart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+
             local ElapsedTime = tick() - StartTime
             self.LerpStatus.ETA = TimeToReachTarget - ElapsedTime
             self.LerpStatus.Distance = (Character.HumanoidRootPart.Position - TargetPoint).Magnitude
@@ -88,6 +104,13 @@ function Util:MoveCharacterToPoint(TargetPoint : Vector3, Speed : number, MaxRad
         end
     else
         while tick() < EndTime do
+
+            for _, BasePart in next, LocalPlayer.Character:GetDescendants() do
+                if BasePart:IsA("BasePart") then
+                    BasePart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+
             local ElapsedTime = tick() - StartTime
             self.LerpStatus.ETA = TimeToReachTarget - ElapsedTime
             self.LerpStatus.Distance = (Character.HumanoidRootPart.Position - TargetPoint).Magnitude
@@ -299,6 +322,9 @@ while wait() do
     end
 
     if #ValidOres == 0 then
+        if Util:GetMoney() > DEPOSIT_THRESHOLD then
+            continue
+        end
         Status:Set("No ores found, waiting for respawn...")
         local OPos = LocalPlayer.Character.HumanoidRootPart.Position
         local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
@@ -340,7 +366,7 @@ while wait() do
         end)
 
         repeat
-            Status:Set("Mining ore... (" .. tostring(Mining:GetRockHealth(Ore)) .. " HP )")
+            Status:Set("Mining ore... (" .. tostring(Mining:GetRockHealth(Ore)) .. " HP)")
             RunService.Heartbeat:Wait()
             Pickaxe.Damage.Key:FireServer("down")
             wait(0.5)
@@ -376,7 +402,7 @@ while wait() do
                 Util:TP(NearestATM:GetPivot() - Vector3.new(0, 5, 0))
             end)
             task.wait(1)
-            ReplicatedStorage.banker:FireServer("apply", Util:GetMoney(), NearestATM)
+            ReplicatedStorage.banker:InvokeServer("apply", Util:GetMoney(), NearestATM)
             HeartbeatConnection:Disconnect()
         else
             Status:Set("No ATM found!")
