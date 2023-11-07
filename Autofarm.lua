@@ -161,8 +161,8 @@ function Mining:GetPickaxe()
             ["Distance"] = true
         })
         Util:MoveCharacterToPoint(Pickaxes:GetPivot(), TELEPORT_SPEED)
-
-        repeat 
+        
+        repeat
             Util:Click(Pickaxes)
             wait(0.75)
         until
@@ -328,6 +328,9 @@ while wait() do
             Util:TP(
                 CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 3.5, 0), Ore:GetPivot().Position)
             )
+            if not LocalPlayer.Character:FindFirstChild("Pickaxe") then
+                LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
+            end
         end)
 
         repeat
