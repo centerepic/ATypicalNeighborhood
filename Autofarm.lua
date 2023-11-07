@@ -1,15 +1,27 @@
 print("Starting Autofarm...")
 local StartTime = tick()
 local Buildings = workspace.Buildings
+local Pickaxes = Buildings.Pickaxes
 local LocalPlayer = game.Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 
-local TELEPORT_SPEED = 75
+if workspace:FindFirstChildOfClass("Hint") then
+    workspace:FindFirstChildOfClass("Hint"):Destroy()
+end
+
+local TELEPORT_SPEED = 52
 local GROUND_INTO = 16
 
-local function TP(Position)
+local Util = {
+    LerpStatus = {
+        ETA = 0,
+        Distance = 0,
+        Lerping = false
+    }
+}
+
+function Util:TP(Position)
     if typeof(Position) == "Instance" then
         Position = Position.CFrame
     end
@@ -23,6 +35,162 @@ local function TP(Position)
     end
 end
 
+function Util:Click(Inst : (Model | BasePart | Folder))
+
+    if Inst:IsA("ClickDetector") then
+        fireclickdetector(Inst, 1)
+        return
+    end
+
+    for _, v in next, Inst:GetDescendants() do
+        if v:IsA("ClickDetector") then
+            fireclickdetector(v, 1)
+        end
+    end
+end
+
+function Util:SineWave(time, maxAmplitude, frequency)
+    local sineValue = maxAmplitude * math.sin(2 * math.pi * frequency * time)
+    return sineValue
+end
+
+function Util:MoveCharacterToPoint(TargetPoint : Vector3, Speed : number, MaxRadius : number)
+
+    if typeof(TargetPoint) == "CFrame" then
+        TargetPoint = TargetPoint.Position
+    end
+
+    TargetPoint = TargetPoint * Vector3.new(1, 0, 1) - Vector3.new(0, GROUND_INTO, 0)
+
+    local Character = LocalPlayer.Character
+    Character.Humanoid.Sit = true
+    local CurrentPosition = Character.HumanoidRootPart.Position * Vector3.new(1, 0, 1) - Vector3.new(0, GROUND_INTO, 0)
+    local DistanceToTarget = (TargetPoint - CurrentPosition).Magnitude
+    local TimeToReachTarget = DistanceToTarget / Speed
+
+    local StartTime = tick()
+    local EndTime = StartTime + TimeToReachTarget
+
+    self.LerpStatus.ETA = TimeToReachTarget
+    self.LerpStatus.Distance = DistanceToTarget
+    self.LerpStatus.Lerping = true
+
+    if MaxRadius then
+        while tick() < EndTime and (Character.HumanoidRootPart.Position - TargetPoint).Magnitude < MaxRadius do
+            local ElapsedTime = tick() - StartTime
+            self.LerpStatus.ETA = TimeToReachTarget - ElapsedTime
+            self.LerpStatus.Distance = (Character.HumanoidRootPart.Position - TargetPoint).Magnitude
+            local LerpAmount = ElapsedTime / TimeToReachTarget
+            Character:PivotTo(CFrame.new(CurrentPosition:Lerp(TargetPoint, LerpAmount)))
+            RunService.Heartbeat:Wait()
+        end
+    else
+        while tick() < EndTime do
+            local ElapsedTime = tick() - StartTime
+            self.LerpStatus.ETA = TimeToReachTarget - ElapsedTime
+            self.LerpStatus.Distance = (Character.HumanoidRootPart.Position - TargetPoint).Magnitude
+            local LerpAmount = ElapsedTime / TimeToReachTarget
+            Character:PivotTo(CFrame.new(CurrentPosition:Lerp(TargetPoint, LerpAmount)))
+            RunService.Heartbeat:Wait()
+        end
+    end
+    
+    self.LerpStatus.ETA = 0
+    self.LerpStatus.Distance = 0
+    self.LerpStatus.Lerping = false
+    Character.Humanoid.Sit = false
+
+    return true
+end
+
+local Status = {
+    Label = Instance.new("Hint", workspace)
+}
+
+Status.Label.Text = "Starting Autofarm..."
+
+function Status:Set(Text : string)
+    self.Label.Text = Text
+end
+
+function Status:AsyncBindToLerp(Prefix : string, Mode)
+
+    if not Mode then
+        Mode = {
+            ["ETA"] = true
+        }
+    end
+
+    task.spawn(function()
+        repeat wait() until Util.LerpStatus.Lerping == true
+
+        local LerpBind; LerpBind = RunService.RenderStepped:Connect(function()
+
+            if Util.LerpStatus.Lerping == false then
+                LerpBind:Disconnect()
+            end
+
+            local CurrentString = Prefix
+
+            if Mode["ETA"] then
+                CurrentString = CurrentString.." ETA: "..tostring(math.floor(Util.LerpStatus.ETA)).."s"
+            end
+            if Mode["Distance"] then
+                CurrentString = CurrentString.." Distance: "..tostring(math.floor(Util.LerpStatus.Distance)).." studs"
+            end
+
+            self.Label.Text = CurrentString
+        end)
+    end)
+    
+end
+
+local Mining = {
+    Ores = {}
+}
+
+function Mining:GetPickaxe()
+    if LocalPlayer.Character then
+        if LocalPlayer.Character:FindFirstChild("Pickaxe") or LocalPlayer.Backpack:FindFirstChild("Pickaxe") then
+            return LocalPlayer.Character:FindFirstChild("Pickaxe") or LocalPlayer.Backpack:FindFirstChild("Pickaxe")
+        end
+        
+        Status:Set("Teleporting to pickaxe...")
+        Status:AsyncBindToLerp("Teleporting to pickaxe...", {
+            ["ETA"] = true,
+            ["Distance"] = true
+        })
+        Util:MoveCharacterToPoint(Pickaxes:GetPivot(), TELEPORT_SPEED)
+
+        repeat 
+            Util:Click(Pickaxes)
+            wait(0.75)
+        until
+            LocalPlayer.Character:FindFirstChild("Pickaxe") or LocalPlayer.Backpack:FindFirstChild("Pickaxe")
+        
+        Status:Set("")
+        return LocalPlayer.Character:FindFirstChild("Pickaxe") or LocalPlayer.Backpack:FindFirstChild("Pickaxe")
+    end
+end
+
+function Mining:GetOres()
+    local Ores = {}
+    for _, v in next, Buildings:GetChildren() do
+        if v.Name == "MiningJobRock" then
+            table.insert(Ores, v)
+        end
+    end
+    return Ores
+end
+
+function Mining:GetRockHealth(Rock : Model)
+    return Rock.RockHealth.Value
+end
+
+if not LocalPlayer.Character then
+    LocalPlayer.CharacterAdded:Wait()
+end
+
 local function FindDeliveryJob()
     for _, Inst in next, Buildings:GetDescendants() do
         if Inst.Name == "DeliveryJob" then
@@ -31,199 +199,148 @@ local function FindDeliveryJob()
     end
 end
 
-local function Click(Part : BasePart)
-    for _, v in next, Part:GetDescendants() do
-        if v:IsA("ClickDetector") then
-            fireclickdetector(v, 1)
-        end
+getgenv().AutoFarm = true
+
+for _, Seat in next, workspace:GetDescendants() do
+    if Seat:IsA("Seat") or Seat:IsA("VehicleSeat") then
+        Seat:Destroy()
     end
 end
 
-local function SineWave(time, maxAmplitude, frequency)
-    local sineValue = maxAmplitude * math.sin(2 * math.pi * frequency * time)
-    return sineValue
-end
-
-local function MoveCharacterToPoint(TargetPoint : Vector3, Speed : number, MaxRadius : number)
-    local Character = LocalPlayer.Character
-    local CurrentPosition = Character.HumanoidRootPart.Position
-    local DistanceToTarget = (TargetPoint - CurrentPosition).Magnitude
-    local TimeToReachTarget = DistanceToTarget / Speed
-
-    local StartTime = tick()
-    local EndTime = StartTime + TimeToReachTarget
-
-    if MaxRadius then
-        while tick() < EndTime and (Character.HumanoidRootPart.Position - TargetPoint).Magnitude < MaxRadius do
-            local ElapsedTime = tick() - StartTime
-            local LerpAmount = ElapsedTime / TimeToReachTarget
-            Character:PivotTo(CFrame.new(CurrentPosition:Lerp(TargetPoint, LerpAmount)))
-            RunService.Heartbeat:Wait()
-        end
-    else
-        while tick() < EndTime do
-            local ElapsedTime = tick() - StartTime
-            local LerpAmount = ElapsedTime / TimeToReachTarget
-            Character:PivotTo(CFrame.new(CurrentPosition:Lerp(TargetPoint, LerpAmount)))
-            RunService.Heartbeat:Wait()
-        end
+for _, v in next, workspace:GetDescendants() do
+    if v.Name == "Acid" then
+        v:Destroy()
     end
-    
-    return true
 end
 
-local Hint = Instance.new("Hint", workspace)
-local function SetHint(Text : string)
-    Hint.Text = Text
-end
+print("Autofarm started! (took " .. tostring(tick() - StartTime) .. " seconds)")
 
-local Beam = Instance.new("Beam", LocalPlayer.Character.HumanoidRootPart)
-Beam.Attachment0 = Instance.new("Attachment", LocalPlayer.Character.HumanoidRootPart)
-Beam.Transparency = NumberSequence.new(0)
-Beam.LightInfluence = 0
-Beam.FaceCamera = true
+while wait() do
 
-local BeamRoot = Instance.new("Part", workspace)
-BeamRoot.Anchored = true
-local BeamTarget = Instance.new("Attachment", BeamRoot)
-Beam.Attachment1 = BeamTarget
-
-task.spawn(function()
-    while wait() do
-        Beam.Color = ColorSequence.new(Color3.fromHSV(tick() % 5 / 5, 1, 1))
+    if not getgenv().AutoFarm then
+        break
     end
-end)
 
-local function PreformDelivery()
     local DeliveryJob : BasePart = FindDeliveryJob()
 
-    TP(Character.HumanoidRootPart.CFrame - Vector3.new(0, GROUND_INTO, 0))
-    SetHint("Traveling to delivery job...")
-    BeamTarget.WorldCFrame = DeliveryJob.CFrame
+    local Money = LocalPlayer.leaderstats.Bux.Value
 
-    local HeartbeatConnection = RunService.Heartbeat:Connect(function()
-        SetHint(
-            "Traveling to delivery job... ("..
-            math.floor((DeliveryJob.Position - Vector3.new(0,GROUND_INTO,0) - Character.HumanoidRootPart.Position).Magnitude)
-            .." studs left)"
-        )
-    end)
+    if Money < 83 and not (LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe")) then
+        Status:Set("Teleporting to delivery job...")
+        Status:AsyncBindToLerp("Teleporting to delivery job...", {
+            ["ETA"] = true,
+            ["Distance"] = true
+        })
+        Util:MoveCharacterToPoint(DeliveryJob:GetPivot(), TELEPORT_SPEED)
+        repeat
+            wait()
+            Util:Click(DeliveryJob)
+        until
+            LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
+        
+        Status:Set("Delivering package...")
 
-    MoveCharacterToPoint(DeliveryJob.Position - Vector3.new(0,GROUND_INTO,0), TELEPORT_SPEED)
-    TP(DeliveryJob.Position)
-
-    HeartbeatConnection:Disconnect()
-
-    repeat
-        wait()
-        Click(DeliveryJob)
-    until
-        LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
-
-    local DeliveryBox : Tool = LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
-    LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
-    SetHint(DeliveryBox.ToolTip)
-
-    local DeliveryTarget = nil
-
-    repeat
-        wait()
-        for _, v in next, DeliveryBox:GetDescendants() do
-            if v:IsA("Beam") then
-                local Beam : Beam = v
-                DeliveryTarget = Beam.Attachment1.WorldCFrame
+        local DeliveryBox = LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
+        local DeliveryTarget = nil
+        LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
+        repeat
+            wait()
+            for _, v in next, DeliveryBox:GetDescendants() do
+                if v:IsA("Beam") then
+                    local Beam : Beam = v
+                    DeliveryTarget = Beam.Attachment1.WorldCFrame
+                end
             end
-        end
-    until DeliveryTarget
+        until DeliveryTarget
+        LocalPlayer.Character.Humanoid:UnequipTools()
 
-    LocalPlayer.Character.Humanoid:UnequipTools()
+        Status:AsyncBindToLerp("Delivering package...", {
+            ["ETA"] = true,
+            ["Distance"] = true
+        })
+        Util:MoveCharacterToPoint(DeliveryTarget.Position, TELEPORT_SPEED)
 
-    local Distance = (DeliveryJob.Position - DeliveryTarget.Position).Magnitude
-    local TimeToDeliver = Distance / TELEPORT_SPEED
-    local WaitStart = tick()
-
-    local TargetCFrame = DeliveryTarget - (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 1.5)
-    local OCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame - Vector3.new(0, GROUND_INTO, 0)
-
-    BeamTarget.WorldCFrame = DeliveryTarget
-
-    local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
-
-        TP(OCFrame:Lerp(
-            TargetCFrame - Vector3.new(0,GROUND_INTO,0),
-            math.clamp((tick() - WaitStart) / TimeToDeliver, 0, 1))
-        )
-
-        for _, Part in next, LocalPlayer.Character:GetDescendants() do
-            if Part:IsA("BasePart") then
-                Part.Velocity = Vector3.new(0, 0, 0)
-            end
-        end
-
-        SetHint("Delivering " .. DeliveryBox.ToolTip .. ", " .. math.floor(TimeToDeliver - (tick() - WaitStart)).." seconds left.")
-    end)
-
-    task.wait(TimeToDeliver)
-    HeartbeatConnection:Disconnect()
-
-    if not LocalPlayer.Backpack:FindFirstChild("Delivery Box") and not LocalPlayer.Character:FindFirstChild("Delivery Box") then
-        print("Delivery failed! (Delivery Box was lost)")
-        return false
-    end
-
-    LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
+        LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
 
     local DeliverAttemptStart = tick()
 
     repeat
 
-        local x,y,z = SineWave(tick() - DeliverAttemptStart, 1.2, 1), SineWave(tick() - DeliverAttemptStart, 1.2, 0.5), SineWave(tick() - DeliverAttemptStart, 1.2, 0.25)
+        local x,y,z = Util:SineWave(tick() - DeliverAttemptStart, 1.2, 1), Util:SineWave(tick() - DeliverAttemptStart, 1.2, 0.5), Util:SineWave(tick() - DeliverAttemptStart, 1.2, 0.25)
 
         if not LocalPlayer.Character:FindFirstChild("Delivery Box") then
             LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
         end
         
         RunService.Heartbeat:Wait()
-        TP(DeliveryTarget.Position - (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 1.5) + Vector3.new(x,y,z))
+        Util:TP(DeliveryTarget.Position - (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 1.5) + Vector3.new(x,y,z))
     until
         (not (LocalPlayer.Character:FindFirstChild("Delivery Box") or LocalPlayer.Backpack:FindFirstChild("Delivery Box")))
         or (tick() - DeliverAttemptStart) > 10
-
-    if (tick() - DeliverAttemptStart) > 10 then
-        SetHint("Delivery failed. Resetting.")
-        DeliveryBox.Parent = workspace
-        DeliveryBox:Destroy()
     end
-end
 
-print("Autofarm started in "..(tick() - StartTime).." seconds.")
+    Status:Set("Getting Pickaxe...")
+    local Pickaxe = Mining:GetPickaxe()
 
-task.spawn(function()
-    while wait() do
-        if LocalPlayer.Character.Humanoid.Sit then
-            LocalPlayer.Character.Humanoid.Sit = false
-            LocalPlayer.Character.Humanoid.Jump = true
+    Status:Set("Getting Ores...")
+    local Ores = Mining:GetOres()
+    local ValidOres = {}
+
+    for _, v : Model in next, Ores do
+        if Mining:GetRockHealth(v) > 0 then
+            table.insert(ValidOres, v)
         end
     end
-end)
 
-while wait() do
-
-    if getgenv().stopautofarm then
-        break
+    if #ValidOres == 0 then
+        Status:Set("No ores found, waiting for respawn...")
+        local OPos = LocalPlayer.Character.HumanoidRootPart.Position
+        local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
+            Util:TP(OPos * Vector3.new(1, 0, 1) - Vector3.new(0, GROUND_INTO, 0))
+        end)
+        repeat
+            wait(3)
+            local Ores = Mining:GetOres()
+            ValidOres = {}
+            for _, v : Model in next, Ores do
+                if Mining:GetRockHealth(v) > 0 then
+                    table.insert(ValidOres, v)
+                end
+            end
+        until
+            #ValidOres > 0
+        HeartbeatConnection:Disconnect()
     end
 
-    PreformDelivery()
+    Status:Set("Teleporting to ore...")
 
-    SetHint("Waiting for delivery cooldown...")
-    local WaitStart = tick()
-    local OPos = LocalPlayer.Character.HumanoidRootPart.Position
+    for _, Ore : Model in next, ValidOres do
+        Status:AsyncBindToLerp("Teleporting to ore...", {
+            ["ETA"] = true,
+            ["Distance"] = true
+        })
+        Util:MoveCharacterToPoint(Ore:GetPivot(), TELEPORT_SPEED)
 
-    local HeartbeatConnection = RunService.Heartbeat:Connect(function()
-        SetHint("Waiting for delivery cooldown... ("..math.floor(10 - (tick() - WaitStart)).." seconds left)")
-        TP(OPos - Vector3.new(0, GROUND_INTO, 0))
-    end)
+        Status:Set("Mining ore...")
+        LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
 
-    task.wait(10)
-    HeartbeatConnection:Disconnect()
+        local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
+            Util:TP(
+                CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 3.5, 0), Ore:GetPivot().Position)
+            )
+        end)
+
+        repeat
+            Status:Set("Mining ore... (" .. tostring(Mining:GetRockHealth(Ore)) .. " HP )")
+            RunService.Heartbeat:Wait()
+            Pickaxe.Damage.Key:FireServer("down")
+            wait(0.5)
+            for i = 20, 0, -1 do
+                Pickaxe.Damage.InflictProp:FireServer(Ore.Main)
+                wait(0.05)
+            end
+        until
+            Mining:GetRockHealth(Ore) <= 0
+        HeartbeatConnection:Disconnect()
+    end
 end
