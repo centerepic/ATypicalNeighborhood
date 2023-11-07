@@ -5,6 +5,7 @@ local Pickaxes = Buildings.Pickaxes
 local LocalPlayer = game.Players.LocalPlayer
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 if workspace:FindFirstChildOfClass("Hint") then
     workspace:FindFirstChildOfClass("Hint"):Destroy()
@@ -12,6 +13,7 @@ end
 
 local TELEPORT_SPEED = 52
 local GROUND_INTO = 16
+local DEPOSIT_THRESHOLD = 1000
 
 local Util = {
     LerpStatus = {
@@ -101,6 +103,10 @@ function Util:MoveCharacterToPoint(TargetPoint : Vector3, Speed : number, MaxRad
     Character.Humanoid.Sit = false
 
     return true
+end
+
+function Util:GetMoney()
+    return LocalPlayer.leaderstats.Bux.Value
 end
 
 local Status = {
@@ -223,7 +229,7 @@ while wait() do
 
     local DeliveryJob : BasePart = FindDeliveryJob()
 
-    local Money = LocalPlayer.leaderstats.Bux.Value
+    local Money = Util:GetMoney()
 
     if Money < 83 and not (LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe")) then
         Status:Set("Teleporting to delivery job...")
@@ -345,5 +351,37 @@ while wait() do
         until
             Mining:GetRockHealth(Ore) <= 0
         HeartbeatConnection:Disconnect()
+    end
+
+    if Money > DEPOSIT_THRESHOLD then
+        Status:Set("Finding ATM...")
+
+        local NearestATM = nil
+        local NearestATMDistance = math.huge
+        for _, ATM : Model in next, workspace.ATMS:GetChildren() do
+            local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - ATM:GetPivot().Position).Magnitude
+            if Distance < NearestATMDistance then
+                NearestATM = ATM
+                NearestATMDistance = Distance
+            end
+        end
+
+        if NearestATM then
+            Status:AsyncBindToLerp("Teleporting to ATM...", {
+                ["ETA"] = true,
+                ["Distance"] = true
+            })
+            Util:MoveCharacterToPoint(NearestATM:GetPivot(), TELEPORT_SPEED)
+            local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
+                Util:TP(NearestATM:GetPivot() - Vector3.new(0, 5, 0))
+            end)
+            task.wait(1)
+            ReplicatedStorage.banker:FireServer("apply", Util:GetMoney(), NearestATM)
+            HeartbeatConnection:Disconnect()
+        else
+            Status:Set("No ATM found!")
+            wait(5)
+        end
+        
     end
 end
