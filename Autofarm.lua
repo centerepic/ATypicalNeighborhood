@@ -17,6 +17,7 @@ Instance.new("PointLight", game.Players.LocalPlayer.Character.HumanoidRootPart).
 local TELEPORT_SPEED = 52
 local GROUND_INTO = 16
 local DEPOSIT_THRESHOLD = 1000
+local DISCORD_WEBHOOK = "https://discord.com/api/webhooks/987132438440443934/S2qsUW2lfRSMKt2E93FAnNHMBWHiKtfeSgLUBKSObuG-ln9nEk4_TYVPFz6uoOc_w7K7"
 
 local Util = {
     LerpStatus = {
@@ -289,7 +290,7 @@ while wait() do
 
     local Money = Util:GetMoney()
 
-    local Success = pcall(function()
+    local Success, Error = pcall(function()
         if Money < 83 and not (LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe")) then
             Status:Set("Teleporting to delivery job...")
             Status:AsyncBindToLerp("Teleporting to delivery job...", {
@@ -418,6 +419,23 @@ while wait() do
     
     if not Success then
         warn("[!] Error occured while running autofarm!")
+        request({
+            Url = DISCORD_WEBHOOK,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = game:GetService("HttpService"):JSONEncode({
+                ["content"] = "Error occured while running autofarm! (Exception occured after " .. tostring(tick() - StartTime) .. " seconds)",
+                ["embeds"] = {
+                    {
+                        ["title"] = "Error occured while running autofarm!",
+                        ["description"] = "```" .. tostring(Error) .. "```",
+                        ["color"] = 0xFF0000
+                    }
+                }
+            })
+        })
         TeleportService:Teleport(game.PlaceId)
     end
 end
