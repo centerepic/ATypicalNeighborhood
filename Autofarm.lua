@@ -14,7 +14,7 @@ end
 
 Instance.new("PointLight", game.Players.LocalPlayer.Character.HumanoidRootPart).Range = 30
 
-local TELEPORT_SPEED = 52
+local TELEPORT_SPEED = 42
 local GROUND_INTO = 16
 local DEPOSIT_THRESHOLD = 1000
 
