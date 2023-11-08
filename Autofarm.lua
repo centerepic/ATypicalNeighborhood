@@ -6,6 +6,7 @@ local LocalPlayer = game.Players.LocalPlayer
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 
 if workspace:FindFirstChildOfClass("Hint") then
     workspace:FindFirstChildOfClass("Hint"):Destroy()
@@ -288,128 +289,135 @@ while wait() do
 
     local Money = Util:GetMoney()
 
-    if Money < 83 and not (LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe")) then
-        Status:Set("Teleporting to delivery job...")
-        Status:AsyncBindToLerp("Teleporting to delivery job...", {
-            ["ETA"] = true,
-            ["Distance"] = true
-        })
-        Util:MoveCharacterToPoint(DeliveryJob:GetPivot(), TELEPORT_SPEED)
-        repeat
-            wait()
-            Util:Click(DeliveryJob)
-        until
-            LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
-        
-        Status:Set("Delivering package...")
-
-        local DeliveryBox = LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
-        local DeliveryTarget = nil
-        LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
-        repeat
-            wait()
-            for _, v in next, DeliveryBox:GetDescendants() do
-                if v:IsA("Beam") then
-                    local Beam : Beam = v
-                    DeliveryTarget = Beam.Attachment1.WorldCFrame
-                end
-            end
-        until DeliveryTarget
-        LocalPlayer.Character.Humanoid:UnequipTools()
-
-        Status:AsyncBindToLerp("Delivering package...", {
-            ["ETA"] = true,
-            ["Distance"] = true
-        })
-        Util:MoveCharacterToPoint(DeliveryTarget.Position, TELEPORT_SPEED)
-
-        LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
-
-    local DeliverAttemptStart = tick()
-
-    repeat
-
-        local x,y,z = Util:SineWave(tick() - DeliverAttemptStart, 1.2, 1), Util:SineWave(tick() - DeliverAttemptStart, 1.2, 0.5), Util:SineWave(tick() - DeliverAttemptStart, 1.2, 0.25)
-
-        if not LocalPlayer.Character:FindFirstChild("Delivery Box") then
-            LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
-        end
-        
-        RunService.Heartbeat:Wait()
-        Util:TP(DeliveryTarget.Position - (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 1.5) + Vector3.new(x,y,z))
-    until
-        (not (LocalPlayer.Character:FindFirstChild("Delivery Box") or LocalPlayer.Backpack:FindFirstChild("Delivery Box")))
-        or (tick() - DeliverAttemptStart) > 10
-    end
-
-    Status:Set("Getting Pickaxe...")
-    local Pickaxe = Mining:GetPickaxe()
-
-    Status:Set("Getting Ores...")
-    local Ores = Mining:GetOres()
-    local ValidOres = {}
-
-    for _, v : Model in next, Ores do
-        if Mining:GetRockHealth(v) > 0 then
-            table.insert(ValidOres, v)
-        end
-    end
-
-    if #ValidOres == 0 then
-        Util:CheckAndDeposit()
-        Status:Set("No ores found, waiting for respawn...")
-
-        local OPos = LocalPlayer.Character.HumanoidRootPart.Position
-        local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
-            Util:TP(OPos * Vector3.new(1, 0, 1) - Vector3.new(0, GROUND_INTO, 0))
-        end)
-        repeat
-            wait(3)
-            local Ores = Mining:GetOres()
-            ValidOres = {}
-            for _, v : Model in next, Ores do
-                if Mining:GetRockHealth(v) > 0 then
-                    table.insert(ValidOres, v)
-                end
-            end
-        until
-            #ValidOres > 0
-        HeartbeatConnection:Disconnect()
-    else
-        Status:Set("Teleporting to ore...")
-        for _, Ore : Model in next, ValidOres do
-            Status:AsyncBindToLerp("Teleporting to ore...", {
+    local Success = pcall(function()
+        if Money < 83 and not (LocalPlayer.Backpack:FindFirstChild("Pickaxe") or LocalPlayer.Character:FindFirstChild("Pickaxe")) then
+            Status:Set("Teleporting to delivery job...")
+            Status:AsyncBindToLerp("Teleporting to delivery job...", {
                 ["ETA"] = true,
                 ["Distance"] = true
             })
-            Util:MoveCharacterToPoint(Ore:GetPivot(), TELEPORT_SPEED)
-
-            Status:Set("Mining ore...")
-            LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
-
-            local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
-                Util:TP(
-                    CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 3.5, 0), Ore:GetPivot().Position)
-                )
-                if not LocalPlayer.Character:FindFirstChild("Pickaxe") then
-                    LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
-                end
-            end)
-
+            Util:MoveCharacterToPoint(DeliveryJob:GetPivot(), TELEPORT_SPEED)
             repeat
-                Status:Set("Mining ore... (" .. tostring(Mining:GetRockHealth(Ore)) .. " HP)")
-                RunService.Heartbeat:Wait()
-                Pickaxe.Damage.Key:FireServer("down")
-                wait(0.5)
-                for i = 20, 0, -1 do
-                    Pickaxe.Damage.InflictProp:FireServer(Ore.Main)
-                    wait(0.05)
+                wait()
+                Util:Click(DeliveryJob)
+            until
+                LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
+            
+            Status:Set("Delivering package...")
+
+            local DeliveryBox = LocalPlayer.Backpack:FindFirstChild("Delivery Box") or LocalPlayer.Character:FindFirstChild("Delivery Box")
+            local DeliveryTarget = nil
+            LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
+            repeat
+                wait()
+                for _, v in next, DeliveryBox:GetDescendants() do
+                    if v:IsA("Beam") then
+                        local Beam : Beam = v
+                        DeliveryTarget = Beam.Attachment1.WorldCFrame
+                    end
+                end
+            until DeliveryTarget
+            LocalPlayer.Character.Humanoid:UnequipTools()
+
+            Status:AsyncBindToLerp("Delivering package...", {
+                ["ETA"] = true,
+                ["Distance"] = true
+            })
+            Util:MoveCharacterToPoint(DeliveryTarget.Position, TELEPORT_SPEED)
+
+            LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
+
+        local DeliverAttemptStart = tick()
+
+        repeat
+
+            local x,y,z = Util:SineWave(tick() - DeliverAttemptStart, 1.2, 1), Util:SineWave(tick() - DeliverAttemptStart, 1.2, 0.5), Util:SineWave(tick() - DeliverAttemptStart, 1.2, 0.25)
+
+            if not LocalPlayer.Character:FindFirstChild("Delivery Box") then
+                LocalPlayer.Character.Humanoid:EquipTool(DeliveryBox)
+            end
+            
+            RunService.Heartbeat:Wait()
+            Util:TP(DeliveryTarget.Position - (LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector * 1.5) + Vector3.new(x,y,z))
+        until
+            (not (LocalPlayer.Character:FindFirstChild("Delivery Box") or LocalPlayer.Backpack:FindFirstChild("Delivery Box")))
+            or (tick() - DeliverAttemptStart) > 10
+        end
+
+        Status:Set("Getting Pickaxe...")
+        local Pickaxe = Mining:GetPickaxe()
+
+        Status:Set("Getting Ores...")
+        local Ores = Mining:GetOres()
+        local ValidOres = {}
+
+        for _, v : Model in next, Ores do
+            if Mining:GetRockHealth(v) > 0 then
+                table.insert(ValidOres, v)
+            end
+        end
+
+        if #ValidOres == 0 then
+            Util:CheckAndDeposit()
+            Status:Set("No ores found, waiting for respawn...")
+
+            local OPos = LocalPlayer.Character.HumanoidRootPart.Position
+            local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
+                Util:TP(OPos * Vector3.new(1, 0, 1) - Vector3.new(0, GROUND_INTO, 0))
+            end)
+            repeat
+                wait(3)
+                local Ores = Mining:GetOres()
+                ValidOres = {}
+                for _, v : Model in next, Ores do
+                    if Mining:GetRockHealth(v) > 0 then
+                        table.insert(ValidOres, v)
+                    end
                 end
             until
-                Mining:GetRockHealth(Ore) <= 0
+                #ValidOres > 0
             HeartbeatConnection:Disconnect()
-        end
-    end
+        else
+            Status:Set("Teleporting to ore...")
+            for _, Ore : Model in next, ValidOres do
+                Status:AsyncBindToLerp("Teleporting to ore...", {
+                    ["ETA"] = true,
+                    ["Distance"] = true
+                })
+                Util:MoveCharacterToPoint(Ore:GetPivot(), TELEPORT_SPEED)
 
-    Util:CheckAndDeposit()
+                Status:Set("Mining ore...")
+                LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
+
+                local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
+                    Util:TP(
+                        CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 3.5, 0), Ore:GetPivot().Position)
+                    )
+                    if not LocalPlayer.Character:FindFirstChild("Pickaxe") then
+                        LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
+                    end
+                end)
+
+                repeat
+                    Status:Set("Mining ore... (" .. tostring(Mining:GetRockHealth(Ore)) .. " HP)")
+                    RunService.Heartbeat:Wait()
+                    Pickaxe.Damage.Key:FireServer("down")
+                    wait(0.5)
+                    for i = 20, 0, -1 do
+                        Pickaxe.Damage.InflictProp:FireServer(Ore.Main)
+                        wait(0.05)
+                    end
+                until
+                    Mining:GetRockHealth(Ore) <= 0
+                HeartbeatConnection:Disconnect()
+            end
+        end
+
+        Util:CheckAndDeposit()
+    end)
+    
+    if not Success then
+        warn("[!] Error occured while running autofarm!")
+        TeleportService:Teleport(game.PlaceId)
+    end
 end
