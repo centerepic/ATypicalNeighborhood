@@ -174,6 +174,40 @@ function Status:AsyncBindToLerp(Prefix : string, Mode)
     
 end
 
+function Util:CheckAndDeposit()
+    if self:GetMoney() > DEPOSIT_THRESHOLD then
+        Status:Set("Finding ATM...")
+
+        local NearestATM = nil
+        local NearestATMDistance = math.huge
+        for _, ATM : Model in next, workspace.ATMS:GetChildren() do
+            local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - ATM:GetPivot().Position).Magnitude
+            if Distance < NearestATMDistance then
+                NearestATM = ATM
+                NearestATMDistance = Distance
+            end
+        end
+
+        if NearestATM then
+            Status:AsyncBindToLerp("Teleporting to ATM...", {
+                ["ETA"] = true,
+                ["Distance"] = true
+            })
+            Util:MoveCharacterToPoint(NearestATM:GetPivot(), TELEPORT_SPEED)
+            local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
+                Util:TP(NearestATM:GetPivot() - Vector3.new(0, 5, 0))
+            end)
+            task.wait(1)
+            game.ReplicatedStorage.banker:InvokeServer("apply", Util:GetMoney(), NearestATM)
+            HeartbeatConnection:Disconnect()
+        else
+            Status:Set("No ATM found!")
+            wait(5)
+        end
+        
+    end 
+end
+
 local Mining = {
     Ores = {}
 }
@@ -322,10 +356,9 @@ while wait() do
     end
 
     if #ValidOres == 0 then
-        if Util:GetMoney() > DEPOSIT_THRESHOLD then
-            continue
-        end
+        Util:CheckAndDeposit()
         Status:Set("No ores found, waiting for respawn...")
+
         local OPos = LocalPlayer.Character.HumanoidRootPart.Position
         local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
             Util:TP(OPos * Vector3.new(1, 0, 1) - Vector3.new(0, GROUND_INTO, 0))
@@ -342,72 +375,41 @@ while wait() do
         until
             #ValidOres > 0
         HeartbeatConnection:Disconnect()
-    end
-
-    Status:Set("Teleporting to ore...")
-
-    for _, Ore : Model in next, ValidOres do
-        Status:AsyncBindToLerp("Teleporting to ore...", {
-            ["ETA"] = true,
-            ["Distance"] = true
-        })
-        Util:MoveCharacterToPoint(Ore:GetPivot(), TELEPORT_SPEED)
-
-        Status:Set("Mining ore...")
-        LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
-
-        local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
-            Util:TP(
-                CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 3.5, 0), Ore:GetPivot().Position)
-            )
-            if not LocalPlayer.Character:FindFirstChild("Pickaxe") then
-                LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
-            end
-        end)
-
-        repeat
-            Status:Set("Mining ore... (" .. tostring(Mining:GetRockHealth(Ore)) .. " HP)")
-            RunService.Heartbeat:Wait()
-            Pickaxe.Damage.Key:FireServer("down")
-            wait(0.5)
-            for i = 20, 0, -1 do
-                Pickaxe.Damage.InflictProp:FireServer(Ore.Main)
-                wait(0.05)
-            end
-        until
-            Mining:GetRockHealth(Ore) <= 0
-        HeartbeatConnection:Disconnect()
-    end
-
-    if Money > DEPOSIT_THRESHOLD then
-        Status:Set("Finding ATM...")
-
-        local NearestATM = nil
-        local NearestATMDistance = math.huge
-        for _, ATM : Model in next, workspace.ATMS:GetChildren() do
-            local Distance = (LocalPlayer.Character.HumanoidRootPart.Position - ATM:GetPivot().Position).Magnitude
-            if Distance < NearestATMDistance then
-                NearestATM = ATM
-                NearestATMDistance = Distance
-            end
-        end
-
-        if NearestATM then
-            Status:AsyncBindToLerp("Teleporting to ATM...", {
+    else
+        Status:Set("Teleporting to ore...")
+        for _, Ore : Model in next, ValidOres do
+            Status:AsyncBindToLerp("Teleporting to ore...", {
                 ["ETA"] = true,
                 ["Distance"] = true
             })
-            Util:MoveCharacterToPoint(NearestATM:GetPivot(), TELEPORT_SPEED)
+            Util:MoveCharacterToPoint(Ore:GetPivot(), TELEPORT_SPEED)
+
+            Status:Set("Mining ore...")
+            LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
+
             local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
-                Util:TP(NearestATM:GetPivot() - Vector3.new(0, 5, 0))
+                Util:TP(
+                    CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 3.5, 0), Ore:GetPivot().Position)
+                )
+                if not LocalPlayer.Character:FindFirstChild("Pickaxe") then
+                    LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
+                end
             end)
-            task.wait(1)
-            ReplicatedStorage.banker:InvokeServer("apply", Util:GetMoney(), NearestATM)
+
+            repeat
+                Status:Set("Mining ore... (" .. tostring(Mining:GetRockHealth(Ore)) .. " HP)")
+                RunService.Heartbeat:Wait()
+                Pickaxe.Damage.Key:FireServer("down")
+                wait(0.5)
+                for i = 20, 0, -1 do
+                    Pickaxe.Damage.InflictProp:FireServer(Ore.Main)
+                    wait(0.05)
+                end
+            until
+                Mining:GetRockHealth(Ore) <= 0
             HeartbeatConnection:Disconnect()
-        else
-            Status:Set("No ATM found!")
-            wait(5)
         end
-        
     end
+
+    Util:CheckAndDeposit()
 end
