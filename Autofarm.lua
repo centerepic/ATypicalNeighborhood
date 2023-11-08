@@ -17,7 +17,10 @@ Instance.new("PointLight", game.Players.LocalPlayer.Character.HumanoidRootPart).
 local TELEPORT_SPEED = 52
 local GROUND_INTO = 16
 local DEPOSIT_THRESHOLD = 1000
-local DISCORD_WEBHOOK = "https://discord.com/api/webhooks/987132438440443934/S2qsUW2lfRSMKt2E93FAnNHMBWHiKtfeSgLUBKSObuG-ln9nEk4_TYVPFz6uoOc_w7K7"
+
+if not DISCORD_WEBHOOK then
+    DISCORD_WEBHOOK = "https://discord.com/api/webhooks/000/000"
+end
 
 local Util = {
     LerpStatus = {
@@ -430,7 +433,7 @@ while wait() do
                 ["embeds"] = {
                     {
                         ["title"] = "Error occured while running autofarm!",
-                        ["description"] = "```" .. tostring(Error) .. "```",
+                        ["description"] = "```" .. tostring(Error) .. "``` <@523502443733188633>",
                         ["color"] = 0xFF0000
                     }
                 }
