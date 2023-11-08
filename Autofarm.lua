@@ -202,6 +202,7 @@ function Util:CheckAndDeposit()
             local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
                 Util:TP(NearestATM:GetPivot() - Vector3.new(0, 5, 0))
             end)
+            game.ReplicatedStorage.banker:InvokeServer("load")
             task.wait(1)
             game.ReplicatedStorage.banker:InvokeServer("apply", Util:GetMoney(), NearestATM)
             HeartbeatConnection:Disconnect()
@@ -395,7 +396,7 @@ while wait() do
 
                 local HeartbeatConnection; HeartbeatConnection = RunService.Heartbeat:Connect(function()
                     Util:TP(
-                        CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 3.5, 0), Ore:GetPivot().Position)
+                        CFrame.new(Ore:GetPivot().Position - Vector3.new(0, 5, 0), Ore:GetPivot().Position)
                     )
                     if not LocalPlayer.Character:FindFirstChild("Pickaxe") then
                         LocalPlayer.Character.Humanoid:EquipTool(Pickaxe)
